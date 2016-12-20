@@ -1,2 +1,5 @@
-# graduation_design
-Using Arduino and Processing to complete my graduation design.
+# 毕业设计
+##目标
+使用 MPU6050 芯片实现对六足机器人的姿态检测
+##实现方式
+使用Arudino Mega 2560 作为控制器，Processing 作为上位机软件，通过无线模块完成下位机和上位机之间的通讯。
