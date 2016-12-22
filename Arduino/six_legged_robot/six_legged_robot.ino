@@ -32,20 +32,19 @@
  */
 
 /**
- * MPU6050六轴陀螺仪连接，使用串口通信
+ * MPU9250九轴陀螺仪连接，使用串口通信
  * VCC --> 3.3/5 V; 
  * GND --> GND; 
  * TX --> 15(RX3);
 */
 
 /**
- * MPU6050六轴陀螺仪连接，使用I2C通信
+ * MPU9250九轴陀螺仪连接，使用I2C通信
  * VCC --> 5 V; 
  * GND --> GND; 
  * SCL --> SCL(21);
  * SDL --> SDL(20)
  * INT --> 2、3、21、20、19、18 皆可，
- * 但记得要在宏定义 #define INTERRUPT_PIN 中改引脚
 */
 
 /**
@@ -63,6 +62,8 @@
 // ======   各模块数据初始化定义    ======
 
 /* LCD模块的数据初始化定义  */
+#include <Wire.h>
+#include <JY901.h>
 #include "LCD12864RSPI.h"
 #define AR_SIZE( a ) sizeof( a ) / sizeof( a[0] )
  
@@ -79,12 +80,12 @@ double zc_last=0;
 double bt=0;  //步态转换
 double bt_last =0;
 
-/* 6050模块的数据初始化定义  */  
-unsigned char Re_buf[11],counter=0; // 缓存接收到的6050数据
+/* 9250模块的数据初始化定义  */  
+unsigned char Re_buf[11],counter=0; // 缓存接收到的9250数据
 unsigned char sign=0;
 float a[3],w[3],Angle[3],T; //三轴加速度、角速度、角度；
 // unsigned char count = 0; // 每隔50个点取样
-char data_6050[512];    // 存储要发送到上位机的信息
+char data_9250[512];    // 存储要发送到上位机的信息
 
 
 /* E34模块的数据初始化定义  */  
@@ -92,9 +93,9 @@ int M0 = 2;
 int M1 = 3; //M0、M1定义E34工作模式
 
 /* 接收上位机的步态指令定义  */  
-#define HEADER_R '$';     // 数据头
-#define GAINT 'G';        // 标记
-#define MESSAGE_BYTES 3;  // 一共有3个字节
+#define HEADER_R '$'     // 数据头
+#define GAINT 'G'        // 标记
+#define MESSAGE_BYTES 3  // 一共有3个字节
 
 // ====  ／各模块数据初始化定义   =====
 
@@ -109,7 +110,7 @@ void setup() {
   /* 串口波特率初始化 */ 
   Serial.begin(115200);//E34接收发送数据波特率
   Serial1.begin(9600);//舵机板9600接收数据波特率
-  Serial3.begin(115200);//6050接收数据波特率
+  Serial3.begin(115200);//9250接收数据波特率
 
 
   // 将E34定义为透传模式
@@ -150,9 +151,7 @@ void loop() {
   digitalWrite(M0, LOW);
   digitalWrite(M1, LOW);
 
-  // 接收并处理6050数据
-  // serialEvent3(); 
-  // 向上位机发送6050数据
+  // 向上位机发送9250数据
   sendData();
 
   // 接收上位机发送的数据,收到的数据格式为： $G0、$G1...
@@ -169,45 +168,28 @@ void loop() {
 
 
 /**************************************
-           6050数据计算公式
+           读取9250数据
 **************************************/
 void serialEvent3() {
-
-  while (Serial3.available()) {
-    //char inChar = (char)Serial.read(); Serial.print(inChar); //Output Original Data, use this code 
-    Re_buf[counter]=(unsigned char)Serial3.read();
-    if(counter==0 && Re_buf[0]!=0x55) return;      //第0号数据不是帧头              
-    counter++;       
-    if(counter==11){            //接收到11个数据
-      counter=0;               //重新赋值，准备下一帧数据的接收 
-      switch(Re_buf [1]){
-        case 0x51:
-          a[0] = float(short(Re_buf [3]<<8| Re_buf [2]))/32768*16;
-          a[1] = float(short(Re_buf [5]<<8| Re_buf [4]))/32768*16;
-          a[2] = float(short(Re_buf [7]<<8| Re_buf [6]))/32768*16;                
-          break;
-        case 0x52:
-          w[0] = float(short(Re_buf [3]<<8| Re_buf [2]))/32768*250;
-          w[1] = float(short(Re_buf [5]<<8| Re_buf [4]))/32768*250;
-          w[2] = float(short(Re_buf [7]<<8| Re_buf [6]))/32768*250;
-          break;
-        case 0x53:
-          Angle[0] = float(short(Re_buf [3]<<8| Re_buf [2]))/32768*180;
-          Angle[1] = float(short(Re_buf [5]<<8| Re_buf [4]))/32768*180;
-          Angle[2] = float(short(Re_buf [7]<<8| Re_buf [6]))/32768*180;
-          T = float(short(Re_buf [9]<<8| Re_buf [8]));///340.0+36.25   
-          sign=1;
-          break;
-      }
-    }      
+  while (Serial3.available()) {   
+    JY901.CopeSerialData(Serial3.read()); //Call JY901 data cope function
   }
 }
 
 // 发送的数据格式为 H, w[0], w[1], w[2], a[0], a[1], a[2], Angle[0], Angle[1], Angle[2],/n
 void sendData(){
-  // sprintf(data_6050, "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f", a[0], a[1], a[2], w[0], w[1], w[2], Angle[0], Angle[1], Angle[2]);
-  Serial.print('H'); //用来标记消息开始的特殊开头
-  Serial.print(",");
+  a[0] = (float)JY901.stcAcc.a[0]/32768*16;
+  a[1] = (float)JY901.stcAcc.a[1]/32768*16;
+  a[2] = (float)JY901.stcAcc.a[2]/32768*16;
+
+  w[0] = (float)JY901.stcGyro.w[0]/32768*2000;
+  w[1] = (float)JY901.stcGyro.w[1]/32768*2000;
+  w[2] = (float)JY901.stcGyro.w[2]/32768*2000;
+
+  Angle[0] = (float)JY901.stcAngle.Angle[0]/32768*180;
+  Angle[1] = (float)JY901.stcAngle.Angle[1]/32768*180;
+  Angle[2] = (float)JY901.stcAngle.Angle[2]/32768*180;
+
   Serial.print('H'); //用来标记消息开始的特殊开头
   Serial.print(",");
 
@@ -230,7 +212,6 @@ void sendData(){
   Serial.print(Angle[1]);
   Serial.print(",");
   Serial.println(Angle[2]);  
-//  Serial.println(data_6050);
   delay(50); //1s发送20个数据
 }
   
