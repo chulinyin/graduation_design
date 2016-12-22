@@ -12,6 +12,7 @@ import java.text.*;
 PFont pfont, listfont;
 Serial serialPort;
 ControlP5 cp5;
+controlP5.Button saveData_bt;
 PeasyCam cam;
 DisplayTable angSpeedTable, accelSpeedTable, yprTable;
 DrawWaveform angSpeedWF, accelSpeedWF, yprWF;
@@ -23,6 +24,7 @@ DateFormat fnameFormat = new java.text.SimpleDateFormat("yyMMdd_HHmm");
 DateFormat timeFormat = new SimpleDateFormat("hh:mm:ss");
 String  fileName;
 float firstRecordTime;
+
 /* 全局参数设定 */
 
 // 波特率
@@ -70,6 +72,7 @@ void setup(){
   lights();
   smooth();
 
+  // 创建 cp5 对象
   cp5 = new ControlP5(this);
 
   // 加载字体
@@ -80,7 +83,7 @@ void setup(){
   textFont(pfont);
   // ControlFont font = new ControlFont(pfont,241);
   
-  // 创建 cp5 对象
+
  
   // 显示可用串口列表
   String[] portNameList = Serial.list();
@@ -88,6 +91,17 @@ void setup(){
 
   // 显示步态列表
   drawGaitList(gaitNameList);
+
+  saveData_bt = cp5.addButton("saveData")
+         .setValue(4)
+         .setPosition(1080,670)
+         .setSize(70,35)
+         .setId(2);
+
+  saveData_bt.getCaptionLabel()
+   .setFont(createFont("MicrosoftSansSerif",14,true))
+   .setText("保存数据")
+   ;  
 
   // 数据表格对象初始化 
   angSpeedTable = new DisplayTable("角速度：", angSpeedName , angSpeedUnit);
@@ -353,6 +367,18 @@ void gaitList(int n){
   }
 }
 
+void saveData(){
+  // to fix the bug: 
+  // 当程序第一次启动时，会自动调用该函数
+  // 用counter作为判断条件，可以保证只保存有效数据
+  if(counter > 1){
+    println("saving the data...");
+    Date now = new Date();
+    fileName = fnameFormat.format(now);
+    saveData2File(dataRecord, "data/"+fileName+".csv");
+  }
+}
+
 // 串口事件，进行数据校验，对正确数据进行存储
 // 接收的数据格式为 H,a[0], a[1], a[2], w[0], w[1], w[2], Angle[0], Angle[1], Angle[2],/n
 void serialEvent(Serial port) {
@@ -372,8 +398,8 @@ void serialEvent(Serial port) {
     accelSpeed[2] = sensors[5];
 
     ypr[0] = sensors[8]; // 偏航角，绕z轴的角度
-    ypr[1] = sensors[6]; // 俯仰角，绕x轴的角度 //<>//
-    ypr[2] = sensors[7]; // 横滚角，绕y轴的角度
+    ypr[1] = -sensors[6]; // 俯仰角，绕x轴的角度
+    ypr[2] = -sensors[7]; // 横滚角，绕y轴的角度
 
     // 连接上位机后，如果缓存第一次的偏航角，
     // 然后以后的偏航角都减去这个值，
@@ -386,8 +412,8 @@ void serialEvent(Serial port) {
     }
     ypr[0] = keepDecimal(sensors[8]- firstYaw,2);
     counter++; // 用于记录从下位机接收有效数据的次数6630
- //<>//
-    float time = millis()/1000.0 - firstRecordTime; //<>//
+
+    float time = millis()/1000.0 - firstRecordTime;
     cacheData(keepDecimal(time, 2), angSpeed, accelSpeed, ypr);
   }
   //else if(myString.startsWith("#")){
@@ -400,7 +426,7 @@ void cacheData(float time, float[] angSpeed, float[] accelSpeed, float[] ypr){
   newRow = dataRecord.addRow();
   newRow.setFloat("time", time);
   newRow.setFloat("Wx", angSpeed[0]);
-  newRow.setFloat("Wy", angSpeed[1]); //<>//
+  newRow.setFloat("Wy", angSpeed[1]);
   newRow.setFloat("Wz", angSpeed[2]);
 
   newRow.setFloat("Ax", accelSpeed[0]);
@@ -414,17 +440,18 @@ void cacheData(float time, float[] angSpeed, float[] accelSpeed, float[] ypr){
 void saveData2File(Table table, String path){
   try{
     saveTable(table, path);
+    println("Succss: saved the data in the file " + path);
   }catch (Exception e) {
     println("Error: can't save data to the path "+ path);
   }
 }
-void keyPressed(){
+/*void keyPressed(){
   if(key == CODED && keyCode == DOWN){
     Date now = new Date();
     fileName = fnameFormat.format(now);
     saveData2File(dataRecord, "data/"+fileName+".csv");
   }
-}
+}*/
 // 保留n位小数
 float keepDecimal(float data, int place){
   return (float)(Math.round(data*pow(10, place))/pow(10, place));
