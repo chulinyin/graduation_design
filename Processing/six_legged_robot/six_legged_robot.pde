@@ -19,7 +19,6 @@ DrawWaveform angSpeedWF, accelSpeedWF, yprWF;
 
 PrintWriter output;
 Table dataRecord;
-// TableRow newRow;
 DateFormat fnameFormat = new java.text.SimpleDateFormat("yyMMdd_HHmm");
 DateFormat timeFormat = new SimpleDateFormat("hh:mm:ss");
 String  fileName;
@@ -34,6 +33,8 @@ final int BAUD_RATE = 115200;
 char counter = 1;             // 用于记录从下位机接收到的有效数据的次数
 String HEADER_R = "H";        // 用于标记有效接收数据开始的符号
 float firstYaw = 0;
+
+float time = 0.00; //从接收数据开始记录的时间
 
 // 用于发送串口数据：$G0 第二位包含所需要执行的步态 
 public static final char HEADER_S = '$';            // 用于标记发送数据开始的符号
@@ -81,9 +82,6 @@ void setup(){
   pfont = createFont("MicrosoftSansSerif",22,true);
   listfont = createFont("MicrosoftSansSerif",12,true);
   textFont(pfont);
-  // ControlFont font = new ControlFont(pfont,241);
-  
-
  
   // 显示可用串口列表
   String[] portNameList = Serial.list();
@@ -92,10 +90,12 @@ void setup(){
   // 显示步态列表
   drawGaitList(gaitNameList);
 
+  // 数据保存按钮
   saveData_bt = cp5.addButton("saveData")
          .setValue(4)
-         .setPosition(1080,670)
+         .setPosition(1070,670)
          .setSize(70,35)
+         .setColorBackground(color(#26407F))
          .setId(2);
 
   saveData_bt.getCaptionLabel()
@@ -108,14 +108,12 @@ void setup(){
   accelSpeedTable = new DisplayTable("加速度：", accelSpeedName, accelSpeedUnit);
   yprTable = new DisplayTable("欧拉角：", yprName, yprUnit);
   
-
   // 波形图对象初始化
   angSpeedWF = new DrawWaveform();
   accelSpeedWF = new DrawWaveform();
   yprWF = new DrawWaveform();
 
-  // 日志文件初始化
-
+  // 日志存储格式初始化
   dataRecord = new Table();
   dataRecord.addColumn("time",Table.FLOAT);
   dataRecord.addColumn("Wx",Table.FLOAT);
@@ -127,9 +125,6 @@ void setup(){
   dataRecord.addColumn("Yaw",Table.FLOAT);
   dataRecord.addColumn("Pitch",Table.FLOAT);
   dataRecord.addColumn("Roll",Table.FLOAT);
-   // newRow = dataRecord.addRow();
-
-  // output = createWriter(fileName + ".csv");
 }
 
 void draw(){
@@ -141,9 +136,14 @@ void draw(){
   text("请选择一个端口",77,110);
   text("请选择一种步态",77,305); 
 
+  fill(#26407F);
+    text("计时器：" + time + " s",710,695); 
+  fill(0);
+
   // 画出数据表和折线图
   drawDataTable();
 
+  // 画出六足躯干姿态
   pushMatrix();
     translate(180, 580);
     rotateY(radians(ypr[0])); 
@@ -164,7 +164,7 @@ void drawPortList(String [] portNameList){
      .setBarHeight(25)
      .setItemHeight(30)
      .setFont(listfont)
-     .setColorBackground(color(#28448A))
+     .setColorBackground(color(#26407F))
      .addItems(portNameList);
      ;
 }
@@ -403,18 +403,16 @@ void serialEvent(Serial port) {
 
     // 连接上位机后，如果缓存第一次的偏航角，
     // 然后以后的偏航角都减去这个值，
-    // 则相当于第一次连接时，芯片y轴的指向被定偏航参考轴
-    
-    if(counter<2){
+    // 则相当于第一次连接时，芯片y轴的指向被定偏航参考轴    
+    if(counter<3){
      firstYaw = sensors[8];
      firstRecordTime = millis()/1000.0;
-     //output = createWriter(fileName + ".csv");
     }
     ypr[0] = keepDecimal(sensors[8]- firstYaw,2);
     counter++; // 用于记录从下位机接收有效数据的次数6630
 
-    float time = millis()/1000.0 - firstRecordTime;
-    cacheData(keepDecimal(time, 2), angSpeed, accelSpeed, ypr);
+    time = keepDecimal(millis()/1000.0 - firstRecordTime, 2);
+    cacheData(time, angSpeed, accelSpeed, ypr);
   }
   //else if(myString.startsWith("#")){
   //  println("Received a message from arduino:" + myString);
@@ -437,6 +435,7 @@ void cacheData(float time, float[] angSpeed, float[] accelSpeed, float[] ypr){
   newRow.setFloat("Pitch", ypr[1]);
   newRow.setFloat("Roll", ypr[2]);
 }
+
 void saveData2File(Table table, String path){
   try{
     saveTable(table, path);
@@ -445,13 +444,7 @@ void saveData2File(Table table, String path){
     println("Error: can't save data to the path "+ path);
   }
 }
-/*void keyPressed(){
-  if(key == CODED && keyCode == DOWN){
-    Date now = new Date();
-    fileName = fnameFormat.format(now);
-    saveData2File(dataRecord, "data/"+fileName+".csv");
-  }
-}*/
+
 // 保留n位小数
 float keepDecimal(float data, int place){
   return (float)(Math.round(data*pow(10, place))/pow(10, place));
