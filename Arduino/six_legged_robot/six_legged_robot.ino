@@ -75,9 +75,9 @@ unsigned char show4[]={0xBA,0xE1,0xD0,0xD0,0xB2,0xBD,0xCC,0xAC};  //横行步态
 unsigned char show5[]={0xD0,0xFD,0xD7,0xAA,0xB2,0xBD,0xCC,0xAC};  //旋转步态
 unsigned char show6[]="km/h";
 char str[4];  //定义速度值存储数组，4位，其中3位为数字，1位为小数点
-double zc=0;  //支撑足转换
+double zc=1;  //支撑足转换
 double zc_last=0;
-double bt=0;  //步态转换
+double bt=1;  //步态转换
 double bt_last =0;
 
 /* 9250模块的数据初始化定义  */  
