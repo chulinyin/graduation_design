@@ -225,14 +225,15 @@ void RcvMsgAnalyse(int gaitSign){
       bt=0;
       break;
     
-    case 2: 
+    case 2:  
       Serial1.print("#2GC30\r\n");  //控制舵机执行动作组2（三足直行）循环30次 
       bt=1;
       zc=1;     
       break;
 
     case 3:
-      Serial1.print("#3GC30\r\n");  //控制舵机执行动作组3（四足直行）循环30次
+      Serial1.print("#12GC30\r\n");  //控制舵机执行动作组12（三足平地直行）循环30次
+      //Serial1.print("#3GC30\r\n");  //控制舵机执行动作组3（四足直行）循环30次
       bt=1;
       zc=2;
       break;
@@ -277,6 +278,28 @@ void RcvMsgAnalyse(int gaitSign){
       Serial1.print("#10GC30\r\n");  //控制舵机执行动作组10（五足旋转）循环30次
       bt=3;
       zc=3;
+      break;
+
+    case 11:
+      Serial1.print("#11GC30\r\n");  //控制舵机执行动作组11（初始化）30次
+      bt=0;
+      break;
+
+    case 12:
+      Serial1.print("#12GC30\r\n");  //控制舵机执行动作组12（三足平地直行）循环30次 
+      bt=1;
+      zc=1;     
+      break;
+      
+    case 13:
+      Serial1.print("#13GC30\r\n");  //控制舵机执行动作组13（三足斜坡直行）循环30次
+      bt=1;
+      zc=1;     
+      break;
+      
+     default:
+      Serial1.print("#11GC30\r\n");  //默认控制舵机执行动作组1（初始化）30次
+      bt=0;
       break;
   }
 }
