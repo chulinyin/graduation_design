@@ -367,6 +367,7 @@ void gaitList(int n){
   }
 }
 
+// 点击保存按钮时调用，将缓存的数据保存到data文件夹下
 void saveData(){
   // to fix the bug: 
   // 当程序第一次启动时，会自动调用该函数
@@ -419,6 +420,7 @@ void serialEvent(Serial port) {
   //} // 测试下位机能否收到上位机的步态命令
 }
 
+// 把可能会保存的数据缓存到表dataRcord中
 void cacheData(float time, float[] angSpeed, float[] accelSpeed, float[] ypr){
   TableRow newRow;
   newRow = dataRecord.addRow();
